@@ -15,12 +15,12 @@ module.exports = async (req, res) => {
   try {
     if (req.method === 'GET') {
       const db = await readDb();
-      return res.status(200).json({ sheetWebhookUrl: db.config.sheetWebhookUrl || '' });
+      return res.status(200).json({ sheetWebhookUrl: db.config.sheetWebhookUrl || 'https://script.google.com/macros/s/AKfycbzwWDogT3bo4dK2ReXvP6ziBuaB-0biPab6-I1d4pVkHqcMg8fGP7nIIk-srEV3jsSy/exec' });
     }
     if (req.method === 'POST') {
       const db = await readDb();
       const body = parseBody(req);
-      db.config.sheetWebhookUrl = String(body.sheetWebhookUrl || '').slice(0, 500);
+      db.config.sheetWebhookUrl = String(body.sheetWebhookUrl || 'https://script.google.com/macros/s/AKfycbzwWDogT3bo4dK2ReXvP6ziBuaB-0biPab6-I1d4pVkHqcMg8fGP7nIIk-srEV3jsSy/exec').slice(0, 500);
       await writeDb(db);
       return res.status(200).json({ ok: true });
     }
