@@ -419,6 +419,7 @@
           server_error: 'Something went wrong checking your invite link. Please try again shortly.'
         };
         gateMsg.textContent = messages[data.reason] || 'This invite link is not valid.';
+        if(data.detail) gateMsg.textContent += ' (' + data.detail + ')';
         gateMsg.classList.add('err');
         return;
       }
