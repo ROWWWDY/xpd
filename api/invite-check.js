@@ -16,6 +16,6 @@ module.exports = async (req, res) => {
     return res.status(200).json({ valid: true, discordId: invite.discordId, label: invite.label });
   } catch (err) {
     console.error('invite-check error:', err);
-    res.status(500).json({ valid: false, reason: 'server_error' });
+    res.status(500).json({ valid: false, reason: 'server_error', detail: err.message || String(err) });
   }
 };
