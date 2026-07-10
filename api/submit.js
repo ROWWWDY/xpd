@@ -12,12 +12,12 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
   const body = parseBody(req);
-  const { discordName, discordId, charname, availability, signature, date, ack } = body;
+  const { discordName, discordId, charname, availability, notes, signature, date, ack } = body;
 
   if (!discordName || !discordId || !charname || !signature) {
     return res.status(400).json({ error: 'Missing required fields.' });
   }
-  if (!Array.isArray(ack) || ack.length !== 8 || ack.some((v) => v !== true)) {
+  if (!Array.isArray(ack) || ack.length !== 17 || ack.some((v) => v !== true)) {
     return res.status(400).json({ error: 'All guideline items must be acknowledged.' });
   }
 
@@ -31,6 +31,7 @@ module.exports = async (req, res) => {
       discordId: String(discordId).slice(0, 100),
       charname: String(charname).slice(0, 100),
       availability: String(availability || '').slice(0, 200),
+      notes: String(notes || '').slice(0, 1000),
       signature: String(signature).slice(0, 100),
       date: String(date || new Date().toLocaleString()).slice(0, 60),
       status: 'pending',
