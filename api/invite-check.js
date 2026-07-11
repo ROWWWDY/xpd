@@ -1,21 +1,60 @@
-const { readDb } = require('../_lib/db');
+const crypto = require('crypto');
+const { verifyRequest } = require('../_lib/auth');
+const { readDb, writeDb } = require('../_lib/db');
+
+function parseBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === 'string') {
+    try { return JSON.parse(req.body); } catch (e) { return {}; }
+  }
+  return req.body;
+}
 
 module.exports = async (req, res) => {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed.' });
-
-  const token = req.query.token;
-  if (!token) return res.status(200).json({ valid: false, reason: 'missing' });
+  if (!verifyRequest(req)) return res.status(401).json({ error: 'Not authenticated.' });
 
   try {
     const db = await readDb();
-    const invite = db.invites.find((i) => i.id === token);
 
-    if (!invite) return res.status(200).json({ valid: false, reason: 'not_found' });
-    if (invite.used) return res.status(200).json({ valid: false, reason: 'used' });
+    if (req.method === 'GET') {
+      const sorted = [...db.invites].sort((a, b) => b.createdAt - a.createdAt);
+      return res.status(200).json({ invites: sorted });
+    }
 
-    return res.status(200).json({ valid: true });
+    if (req.method === 'POST') {
+      const { label, quantity } = parseBody(req);
+      const qty = Math.min(Math.max(parseInt(quantity, 10) || 1, 1), 50);
+
+      const created = [];
+      for (let n = 0; n < qty; n++) {
+        const invite = {
+          id: crypto.randomBytes(10).toString('hex'),
+          label: String(label || '').trim().slice(0, 100),
+          used: false,
+          createdAt: Date.now(),
+          usedAt: null,
+          applicationId: null
+        };
+        db.invites.push(invite);
+        created.push(invite);
+      }
+      await writeDb(db);
+      return res.status(200).json({ ok: true, invites: created });
+    }
+
+    if (req.method === 'DELETE') {
+      const id = req.query.id;
+      if (!id) return res.status(400).json({ error: 'Missing invite id.' });
+      const before = db.invites.length;
+      db.invites = db.invites.filter((i) => i.id !== id);
+      if (db.invites.length === before) return res.status(404).json({ error: 'Invite not found.' });
+      await writeDb(db);
+      return res.status(200).json({ ok: true });
+    }
+
+    return res.status(405).json({ error: 'Method not allowed.' });
   } catch (err) {
-    console.error('invite-check error:', err);
-    res.status(500).json({ valid: false, reason: 'server_error', detail: err.message || String(err) });
+    console.error('invites error:', err);
+    res.status(500).json({ error: 'Could not reach the database.' });
   }
 };
