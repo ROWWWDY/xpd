@@ -1,4 +1,5 @@
 const { readDb, writeDb } = require('./_lib/db');
+const { ACK_SECTIONS } = require('./_lib/ackSections');
 
 function parseBody(req) {
   if (!req.body) return {};
@@ -60,6 +61,7 @@ module.exports = async (req, res) => {
       reviewedBy: null,
       reviewedAt: null,
       inviteId: invite.id,
+      ackSections: ACK_SECTIONS,
       ts: Date.now()
     };
 
