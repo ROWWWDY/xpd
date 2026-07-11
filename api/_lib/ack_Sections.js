@@ -1,10 +1,3 @@
-// Canonical text of the cadet acknowledgement form, mirrored from index.html.
-// Kept server-side (not trusted from the client) so admin.html can safely
-// render it with innerHTML without any risk of injected markup.
-// If the wording in index.html ever changes, update this file to match —
-// each submission stores a snapshot of this at the time it was submitted,
-// so past applications keep the wording that was actually shown to them.
-
 const ACK_SECTIONS = [
   {
     legend: '02 — Conduct & Roleplay Standards',
