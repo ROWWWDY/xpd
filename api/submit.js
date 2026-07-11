@@ -1,6 +1,3 @@
-const { readDb, writeDb } = require('./_lib/db');
-const { ACK_SECTIONS } = require('./_lib/ackSections');
-
 function parseBody(req) {
   if (!req.body) return {};
   if (typeof req.body === 'string') {
@@ -10,22 +7,25 @@ function parseBody(req) {
 }
 
 module.exports = async (req, res) => {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
-
-  const body = parseBody(req);
-  const { inviteToken, discordName, discordId, charname, availability, notes, signature, date, ack } = body;
-
-  if (!inviteToken) {
-    return res.status(401).json({ error: 'Missing invite link. Open this form using your personal invite link.' });
-  }
-  if (!discordName || !discordId || !charname || !signature) {
-    return res.status(400).json({ error: 'Missing required fields.' });
-  }
-  if (!Array.isArray(ack) || ack.length !== 17 || ack.some((v) => v !== true)) {
-    return res.status(400).json({ error: 'All guideline items must be acknowledged.' });
-  }
-
   try {
+    const { readDb, writeDb } = require('./_lib/db');
+    const { ACK_SECTIONS } = require('./_lib/ackSections');
+
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
+
+    const body = parseBody(req);
+    const { inviteToken, discordName, discordId, charname, availability, notes, signature, date, ack } = body;
+
+    if (!inviteToken) {
+      return res.status(401).json({ error: 'Missing invite link. Open this form using your personal invite link.' });
+    }
+    if (!discordName || !discordId || !charname || !signature) {
+      return res.status(400).json({ error: 'Missing required fields.' });
+    }
+    if (!Array.isArray(ack) || ack.length !== 17 || ack.some((v) => v !== true)) {
+      return res.status(400).json({ error: 'All guideline items must be acknowledged.' });
+    }
+
     const db = await readDb();
 
     const invite = db.invites.find((i) => i.id === inviteToken);
@@ -77,6 +77,6 @@ module.exports = async (req, res) => {
     res.status(200).json({ ok: true, formNumber, id: record.id });
   } catch (err) {
     console.error('submit error:', err);
-    res.status(500).json({ error: 'Could not reach the database. Please try again.' });
+    res.status(500).json({ error: 'Could not reach the database. Please try again.', detail: err.message || String(err) });
   }
 };
