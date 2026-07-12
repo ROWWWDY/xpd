@@ -338,13 +338,13 @@
       <button class="nav-item" data-view="applications" data-title="Cadet Applications" data-sub="Review, accept, or reject intake forms">
         <span class="ic">▤</span> Applications <span class="nav-badge" id="navAppCount">0</span>
       </button>
-      <button class="nav-item owner-only" data-view="invites" data-title="Invite Links" data-sub="Create one-time invite links for new joinees">
+      <button class="nav-item" data-cap="manage_invites" data-view="invites" data-title="Invite Links" data-sub="Create one-time invite links for new joinees">
         <span class="ic">✉</span> Invites
       </button>
-      <button class="nav-item owner-only" data-view="admins" data-title="Admin Accounts" data-sub="Create and manage dashboard admin accounts">
+      <button class="nav-item" data-cap="manage_admins" data-view="admins" data-title="Admin Accounts" data-sub="Create and manage dashboard admin accounts">
         <span class="ic">☺</span> Admins
       </button>
-      <button class="nav-item owner-only" data-view="sync" data-title="Google Sheet Sync" data-sub="Send decisions to an external spreadsheet">
+      <button class="nav-item" data-cap="manage_sync" data-view="sync" data-title="Google Sheet Sync" data-sub="Send decisions to an external spreadsheet">
         <span class="ic">⇄</span> Sync
       </button>
     </nav>
@@ -456,12 +456,13 @@
             <label for="adminRole">Role</label>
             <select id="adminRole">
               <option value="reviewer">Reviewer</option>
+              <option value="coordinator">Coordinator</option>
               <option value="owner">Owner</option>
             </select>
           </div>
           <button class="btn primary" id="createAdminBtn">Create account</button>
         </div>
-        <p class="sync-note"><b>Reviewers</b> can view applications and Accept/Reject them — nothing else. <b>Owners</b> have full access, including Invites, Sync settings, Delete, and managing other admin accounts. Choose Owner only for trusted co-managers.</p>
+        <p class="sync-note"><b>Reviewers</b> can view applications and Accept/Reject them — nothing else. <b>Coordinators</b> can additionally manage invite links. <b>Owners</b> have full access, including Sync settings, Delete, and managing other admin accounts. Choose Owner only for trusted co-managers.</p>
         <div class="sync-status" id="adminCreateStatus"><span>—</span></div>
       </div>
 
@@ -542,6 +543,7 @@
   let activeFilter = 'all';
   let searchTerm = '';
   let currentRole = null;
+  let currentCapabilities = [];
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -572,7 +574,7 @@
     try{
       const res = await fetch('/api/admin/session', { credentials: 'include' });
       const data = await res.json();
-      if(data.isAdmin) showDash(data.username, data.permRole);
+      if(data.isAdmin) showDash(data.username, data.permRole, data.capabilities || []);
     }catch(e){}
   }
 
@@ -636,26 +638,29 @@
     }
   });
 
-  async function showDash(username, permRole){
+  async function showDash(username, permRole, capabilities){
     currentRole = permRole;
+    currentCapabilities = capabilities || [];
     loginPanel.style.display = 'none';
     dashPanel.style.display = 'flex';
 
     whoName.textContent = username || 'Signed in';
     avatarInitial.textContent = ((username && username[0]) || '?').toUpperCase();
-    whoRoleEl.textContent = permRole === 'owner' ? 'Owner · full access' : 'Reviewer · view & decide';
+    const roleLabel = permRole ? permRole.charAt(0).toUpperCase() + permRole.slice(1) : 'Reviewer';
+    whoRoleEl.textContent = roleLabel + (permRole === 'owner' ? ' · full access' : ' · limited access');
 
-    document.querySelectorAll('.owner-only').forEach(el => {
-      el.style.display = permRole === 'owner' ? '' : 'none';
+    document.querySelectorAll('[data-cap]').forEach(el => {
+      el.style.display = currentCapabilities.includes(el.getAttribute('data-cap')) ? '' : 'none';
     });
 
-    // If a reviewer somehow lands on an owner-only view (stale state), snap back to Applications.
+    // If the current view needs a capability this role doesn't have (stale
+    // state from a previous session), snap back to Applications.
     const activeNav = document.querySelector('.nav-item.active');
-    if(permRole !== 'owner' && activeNav && activeNav.classList.contains('owner-only')){
+    if(activeNav && activeNav.hasAttribute('data-cap') && !currentCapabilities.includes(activeNav.getAttribute('data-cap'))){
       document.querySelector('.nav-item[data-view="applications"]').click();
     }
 
-    if(permRole === 'owner'){
+    if(currentCapabilities.includes('manage_sync')){
       try{
         const res = await fetch('/api/admin/config', { credentials: 'include' });
         const data = await res.json();
@@ -664,9 +669,9 @@
           ? '<span style="color:var(--accepted);">✓ Sync is active.</span>'
           : '<span>No sheet connected — decisions are only kept here.</span>';
       }catch(e){}
-      loadInvites();
-      loadAdmins();
     }
+    if(currentCapabilities.includes('manage_invites')) loadInvites();
+    if(currentCapabilities.includes('manage_admins')) loadAdmins();
 
     loadApplications();
   }
@@ -837,7 +842,7 @@
       ? '<button class="btn reject" data-id="' + e.id + '" data-action="rejected">Reject</button>' +
         '<button class="btn accept" data-id="' + e.id + '" data-action="accepted">Accept</button>'
       : '<span style="color:var(--text-faint);font-size:12.5px;">Already reviewed.</span>') +
-      (currentRole === 'owner' ? '<button class="btn reject" data-delete-id="' + e.id + '" style="margin-left:auto;">Delete</button>' : '');
+      (currentCapabilities.includes('delete_applications') ? '<button class="btn reject" data-delete-id="' + e.id + '" style="margin-left:auto;">Delete</button>' : '');
 
     modalFoot.querySelectorAll('button[data-action]').forEach(btn => {
       btn.addEventListener('click', async function(){
