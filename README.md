@@ -151,7 +151,32 @@ personal invite link.
 The applicant's Discord ID in their submission always comes from the invite
 itself, not from a text box they can edit — so it can't be spoofed.
 
-## 9. Security notes
+## 9. Multiple admins (Owner + Reviewer roles)
+
+There are two roles:
+
+- **Owner** — full access: applications, Invites, Sync settings, Delete,
+  and managing other admin accounts. Your `ADMIN_USER` / `ADMIN_PASS`
+  environment variables are a permanent Owner login that always works,
+  even if Redis is having issues — so you can never get locked out.
+- **Reviewer** — can only view applications and Accept/Reject them. No
+  Invites tab, no Sync tab, no Delete button, no admin management.
+
+To add someone:
+
+1. Log in as Owner, go to the **Admins** tab.
+2. Enter a username and password (6+ characters), pick a role, click
+   **Create account**.
+3. Give them that username/password — they log in at `/admin.html` like
+   normal.
+
+Passwords are hashed (bcrypt) before being stored in Redis — never in
+plain text. One thing worth knowing: sessions last 4 hours and aren't
+re-checked against the admin list on every request, so if you remove
+someone's account while they're mid-session, they stay logged in until
+that session naturally expires rather than being kicked out instantly.
+
+## 10. Security notes
 
 - The admin password is checked inside `api/admin/login.js`, which runs on
   Vercel's servers — it is never sent to or visible in the browser.
@@ -172,7 +197,7 @@ itself, not from a text box they can edit — so it can't be spoofed.
   by DM, not in a public channel), since anyone with an unused link's exact
   URL can use it.
 
-## 10. If something goes wrong
+## 11. If something goes wrong
 
 - **401 on login even with the right password:** double-check
   `ADMIN_USER`/`ADMIN_PASS` are actually set in Vercel's dashboard for the
