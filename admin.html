@@ -72,6 +72,12 @@
     border-radius:5px;color:var(--text);padding:11px 13px;font-size:14px;
     font-family:'Inter',sans-serif;outline:none;transition:border-color .15s ease, box-shadow .15s ease;
   }
+  select{
+    width:100%;background:var(--surface-2);border:1px solid var(--border-strong);
+    border-radius:5px;color:var(--text);padding:11px 13px;font-size:14px;
+    font-family:'Inter',sans-serif;outline:none;transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim);}
   input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim);}
   .btn{
     font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;
@@ -332,10 +338,13 @@
       <button class="nav-item" data-view="applications" data-title="Cadet Applications" data-sub="Review, accept, or reject intake forms">
         <span class="ic">▤</span> Applications <span class="nav-badge" id="navAppCount">0</span>
       </button>
-      <button class="nav-item" data-view="invites" data-title="Invite Links" data-sub="Create one-time invite links for new joinees">
+      <button class="nav-item owner-only" data-view="invites" data-title="Invite Links" data-sub="Create one-time invite links for new joinees">
         <span class="ic">✉</span> Invites
       </button>
-      <button class="nav-item" data-view="sync" data-title="Google Sheet Sync" data-sub="Send decisions to an external spreadsheet">
+      <button class="nav-item owner-only" data-view="admins" data-title="Admin Accounts" data-sub="Create and manage dashboard admin accounts">
+        <span class="ic">☺</span> Admins
+      </button>
+      <button class="nav-item owner-only" data-view="sync" data-title="Google Sheet Sync" data-sub="Send decisions to an external spreadsheet">
         <span class="ic">⇄</span> Sync
       </button>
     </nav>
@@ -344,7 +353,7 @@
       <div class="avatar" id="avatarInitial">?</div>
       <div class="who">
         <div class="n" id="whoName">Signed in</div>
-        <div class="r">Staff reviewer</div>
+        <div class="r" id="whoRole">Staff reviewer</div>
       </div>
       <button id="logoutBtn" title="Sign out">⏻</button>
     </div>
@@ -431,6 +440,42 @@
       </div>
     </section>
 
+    <!-- Admins -->
+    <section class="view" id="view-admins">
+      <div class="panel sync-card" style="margin-bottom:20px;">
+        <div class="sync-row">
+          <div class="field">
+            <label for="adminUsername">Username</label>
+            <input type="text" id="adminUsername" placeholder="e.g. jsmith" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="adminPassword">Password</label>
+            <input type="password" id="adminPassword" placeholder="At least 6 characters" autocomplete="new-password">
+          </div>
+          <div class="field" style="max-width:140px;">
+            <label for="adminRole">Role</label>
+            <select id="adminRole">
+              <option value="reviewer">Reviewer</option>
+              <option value="owner">Owner</option>
+            </select>
+          </div>
+          <button class="btn primary" id="createAdminBtn">Create account</button>
+        </div>
+        <p class="sync-note"><b>Reviewers</b> can view applications and Accept/Reject them — nothing else. <b>Owners</b> have full access, including Invites, Sync settings, Delete, and managing other admin accounts. Choose Owner only for trusted co-managers.</p>
+        <div class="sync-status" id="adminCreateStatus"><span>—</span></div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Username</th><th>Role</th><th>Created</th><th></th></tr>
+          </thead>
+          <tbody id="adminTableBody"></tbody>
+        </table>
+        <div class="empty-state" id="adminEmptyState" style="display:none;">No extra admin accounts yet — the bootstrap Owner login from your environment variables always works.</div>
+      </div>
+    </section>
+
     <!-- Sync -->
     <section class="view" id="view-sync">
       <div class="panel sync-card">
@@ -484,6 +529,7 @@
   const clockEl = document.getElementById('clock');
   const avatarInitial = document.getElementById('avatarInitial');
   const whoName = document.getElementById('whoName');
+  const whoRoleEl = document.getElementById('whoRole');
   const searchInput = document.getElementById('searchInput');
 
   const modalOverlay = document.getElementById('modalOverlay');
@@ -495,6 +541,7 @@
   let currentEntries = [];
   let activeFilter = 'all';
   let searchTerm = '';
+  let currentRole = null;
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -525,7 +572,7 @@
     try{
       const res = await fetch('/api/admin/session', { credentials: 'include' });
       const data = await res.json();
-      if(data.isAdmin) showDash();
+      if(data.isAdmin) showDash(data.username, data.permRole);
     }catch(e){}
   }
 
@@ -543,10 +590,8 @@
         loginError.textContent = data.error || 'Login failed.';
         return;
       }
-      whoName.textContent = adminUser.value.trim();
-      avatarInitial.textContent = (adminUser.value.trim()[0] || '?').toUpperCase();
       adminPass.value = '';
-      showDash();
+      checkSession();
     }catch(e){
       loginError.textContent = 'Could not reach the server.';
     }
@@ -591,19 +636,39 @@
     }
   });
 
-  async function showDash(){
+  async function showDash(username, permRole){
+    currentRole = permRole;
     loginPanel.style.display = 'none';
     dashPanel.style.display = 'flex';
-    try{
-      const res = await fetch('/api/admin/config', { credentials: 'include' });
-      const data = await res.json();
-      sheetUrlInput.value = data.sheetWebhookUrl || '';
-      syncStatus.innerHTML = data.sheetWebhookUrl
-        ? '<span style="color:var(--accepted);">✓ Sync is active.</span>'
-        : '<span>No sheet connected — decisions are only kept here.</span>';
-    }catch(e){}
+
+    whoName.textContent = username || 'Signed in';
+    avatarInitial.textContent = ((username && username[0]) || '?').toUpperCase();
+    whoRoleEl.textContent = permRole === 'owner' ? 'Owner · full access' : 'Reviewer · view & decide';
+
+    document.querySelectorAll('.owner-only').forEach(el => {
+      el.style.display = permRole === 'owner' ? '' : 'none';
+    });
+
+    // If a reviewer somehow lands on an owner-only view (stale state), snap back to Applications.
+    const activeNav = document.querySelector('.nav-item.active');
+    if(permRole !== 'owner' && activeNav && activeNav.classList.contains('owner-only')){
+      document.querySelector('.nav-item[data-view="applications"]').click();
+    }
+
+    if(permRole === 'owner'){
+      try{
+        const res = await fetch('/api/admin/config', { credentials: 'include' });
+        const data = await res.json();
+        sheetUrlInput.value = data.sheetWebhookUrl || '';
+        syncStatus.innerHTML = data.sheetWebhookUrl
+          ? '<span style="color:var(--accepted);">✓ Sync is active.</span>'
+          : '<span>No sheet connected — decisions are only kept here.</span>';
+      }catch(e){}
+      loadInvites();
+      loadAdmins();
+    }
+
     loadApplications();
-    loadInvites();
   }
 
   /* ---------------- data ---------------- */
@@ -772,7 +837,7 @@
       ? '<button class="btn reject" data-id="' + e.id + '" data-action="rejected">Reject</button>' +
         '<button class="btn accept" data-id="' + e.id + '" data-action="accepted">Accept</button>'
       : '<span style="color:var(--text-faint);font-size:12.5px;">Already reviewed.</span>') +
-      '<button class="btn reject" data-delete-id="' + e.id + '" style="margin-left:auto;">Delete</button>';
+      (currentRole === 'owner' ? '<button class="btn reject" data-delete-id="' + e.id + '" style="margin-left:auto;">Delete</button>' : '');
 
     modalFoot.querySelectorAll('button[data-action]').forEach(btn => {
       btn.addEventListener('click', async function(){
@@ -915,6 +980,93 @@
       inviteCreateStatus.innerHTML = '<span style="color:var(--rejected);">Could not reach the server.</span>';
     }finally{
       createInviteBtn.disabled = false;
+    }
+  });
+
+  /* ---------------- admin accounts (owner only) ---------------- */
+  const adminUsername = document.getElementById('adminUsername');
+  const adminPassword = document.getElementById('adminPassword');
+  const adminRole = document.getElementById('adminRole');
+  const createAdminBtn = document.getElementById('createAdminBtn');
+  const adminCreateStatus = document.getElementById('adminCreateStatus');
+  const adminTableBody = document.getElementById('adminTableBody');
+  const adminEmptyState = document.getElementById('adminEmptyState');
+
+  async function loadAdmins(){
+    try{
+      const res = await fetch('/api/admin/admins', { credentials: 'include' });
+      if(!res.ok) return;
+      const data = await res.json();
+      renderAdmins(data.admins || []);
+    }catch(e){}
+  }
+
+  function renderAdmins(admins){
+    if(admins.length === 0){
+      adminTableBody.innerHTML = '';
+      adminEmptyState.style.display = 'block';
+      return;
+    }
+    adminEmptyState.style.display = 'none';
+
+    adminTableBody.innerHTML = admins.map(a => {
+      const rolePill = a.permRole === 'owner'
+        ? '<span class="pill accepted">owner</span>'
+        : '<span class="pill pending">reviewer</span>';
+      return '<tr>' +
+        '<td>' + escapeHtml(a.username) + '</td>' +
+        '<td>' + rolePill + '</td>' +
+        '<td>' + new Date(a.createdAt).toLocaleDateString() + '</td>' +
+        '<td><button class="icon-btn reject" data-remove-admin="' + a.id + '" title="Remove">✕</button></td>' +
+      '</tr>';
+    }).join('');
+
+    adminTableBody.querySelectorAll('[data-remove-admin]').forEach(btn => {
+      btn.addEventListener('click', async function(){
+        if(!confirm('Remove this admin account? They will be signed out the next time their session expires.')) return;
+        try{
+          const res = await fetch('/api/admin/admins?id=' + encodeURIComponent(btn.getAttribute('data-remove-admin')), {
+            method: 'DELETE',
+            credentials: 'include'
+          });
+          const data = await res.json();
+          if(!res.ok) alert(data.error || 'Could not remove that admin.');
+        }catch(e){}
+        loadAdmins();
+      });
+    });
+  }
+
+  createAdminBtn.addEventListener('click', async function(){
+    const username = adminUsername.value.trim();
+    const password = adminPassword.value;
+    const role = adminRole.value;
+    if(!username || !password){
+      adminCreateStatus.innerHTML = '<span style="color:var(--rejected);">Username and password are required.</span>';
+      return;
+    }
+    createAdminBtn.disabled = true;
+    try{
+      const res = await fetch('/api/admin/admins', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, permRole: role })
+      });
+      const data = await res.json();
+      if(!res.ok){
+        adminCreateStatus.innerHTML = '<span style="color:var(--rejected);">' + escapeHtml(data.error || 'Could not create admin.') + '</span>';
+        return;
+      }
+      adminCreateStatus.innerHTML = '<span style="color:var(--accepted);">✓ Admin account created.</span>';
+      adminUsername.value = '';
+      adminPassword.value = '';
+      adminRole.value = 'reviewer';
+      loadAdmins();
+    }catch(e){
+      adminCreateStatus.innerHTML = '<span style="color:var(--rejected);">Could not reach the server.</span>';
+    }finally{
+      createAdminBtn.disabled = false;
     }
   });
 
