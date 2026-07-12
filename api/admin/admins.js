@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const { requireOwner, getSession } = require('../_lib/auth');
+const { hasCapability, getSession } = require('../_lib/auth');
+const { ROLES } = require('../_lib/permissions');
 const { readDb, writeDb } = require('../_lib/db');
 
 function parseBody(req) {
@@ -12,7 +13,7 @@ function parseBody(req) {
 }
 
 module.exports = async (req, res) => {
-  if (!requireOwner(req)) return res.status(403).json({ error: 'Owner permission required.' });
+  if (!hasCapability(req, 'manage_admins')) return res.status(403).json({ error: 'You do not have permission to manage admin accounts.' });
 
   try {
     const db = await readDb();
@@ -22,13 +23,13 @@ module.exports = async (req, res) => {
       const admins = db.admins.map((a) => ({
         id: a.id, username: a.username, permRole: a.permRole, createdAt: a.createdAt
       }));
-      return res.status(200).json({ admins });
+      return res.status(200).json({ admins, roles: Object.keys(ROLES) });
     }
 
     if (req.method === 'POST') {
       const { username, password, permRole } = parseBody(req);
       const cleanUsername = String(username || '').trim().slice(0, 60);
-      const cleanRole = permRole === 'owner' ? 'owner' : 'reviewer';
+      const cleanRole = Object.prototype.hasOwnProperty.call(ROLES, permRole) ? permRole : 'reviewer';
 
       if (!cleanUsername || !password) {
         return res.status(400).json({ error: 'Username and password are required.' });
