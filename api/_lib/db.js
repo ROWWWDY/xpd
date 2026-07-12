@@ -27,7 +27,7 @@ async function readDb() {
   const redis = getRedis();
   const data = await redis.get(DB_KEY);
   if (!data) {
-    return { counter: 200, applications: [], config: { sheetWebhookUrl: '' }, invites: [] };
+    return { counter: 200, applications: [], config: { sheetWebhookUrl: '' }, invites: [], admins: [] };
   }
   // The SDK may hand back a parsed object or a raw string depending on how
   // it was stored — handle both so this never breaks on a format change.
@@ -36,13 +36,14 @@ async function readDb() {
     try {
       db = JSON.parse(data);
     } catch (e) {
-      db = { counter: 200, applications: [], config: { sheetWebhookUrl: '' }, invites: [] };
+      db = { counter: 200, applications: [], config: { sheetWebhookUrl: '' }, invites: [], admins: [] };
     }
   } else {
     db = data;
   }
-  // Backfill invites for databases written before this feature existed.
+  // Backfill fields for databases written before these features existed.
   if (!Array.isArray(db.invites)) db.invites = [];
+  if (!Array.isArray(db.admins)) db.admins = [];
   return db;
 }
 
