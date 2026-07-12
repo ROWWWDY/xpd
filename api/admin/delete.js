@@ -1,8 +1,8 @@
-const { requireOwner } = require('../_lib/auth');
+const { hasCapability } = require('../_lib/auth');
 const { readDb, writeDb } = require('../_lib/db');
 
 module.exports = async (req, res) => {
-  if (!requireOwner(req)) return res.status(403).json({ error: 'Owner permission required.' });
+  if (!hasCapability(req, 'delete_applications')) return res.status(403).json({ error: 'You do not have permission to delete applications.' });
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
   const id = req.query.id;
