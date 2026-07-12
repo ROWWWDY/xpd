@@ -1,4 +1,4 @@
-const { verifyRequest } = require('../_lib/auth');
+const { hasCapability } = require('../_lib/auth');
 const { readDb, writeDb } = require('../_lib/db');
 
 function parseBody(req) {
@@ -10,7 +10,7 @@ function parseBody(req) {
 }
 
 module.exports = async (req, res) => {
-  if (!verifyRequest(req)) return res.status(401).json({ error: 'Not authenticated.' });
+  if (!hasCapability(req, 'decide_applications')) return res.status(403).json({ error: 'You do not have permission to accept/reject applications.' });
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
   const id = req.query.id;
