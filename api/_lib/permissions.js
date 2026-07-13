@@ -5,7 +5,8 @@ const ROLES = {
     'delete_applications',
     'manage_invites',
     'manage_sync',
-    'manage_admins'
+    'manage_admins',
+    'view_security_log'
   ],
   coordinator: [
     'view_applications',
