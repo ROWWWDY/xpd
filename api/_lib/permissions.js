@@ -11,16 +11,20 @@ const ROLES = {
     'manage_invites',
     'manage_sync',
     'manage_admins',
-    'view_security_log'
+    'view_security_log',
+    'view_roster',
+    'manage_roster'
   ],
   coordinator: [
     'view_applications',
     'decide_applications',
-    'manage_invites'
+    'manage_invites',
+    'view_roster'
   ],
   reviewer: [
     'view_applications',
-    'decide_applications'
+    'decide_applications',
+    'view_roster'
   ]
 };
 
