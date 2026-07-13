@@ -591,7 +591,7 @@
   /* ---------------- auth ---------------- */
   async function checkSession(){
     try{
-      const res = await fetch('/api/admin/session', { credentials: 'include' });
+      const res = await fetch('/api/admin/auth', { credentials: 'include' });
       const data = await res.json();
       if(data.isAdmin) showDash(data.username, data.permRole, data.capabilities || []);
     }catch(e){}
@@ -600,7 +600,7 @@
   document.getElementById('loginBtn').addEventListener('click', async function(){
     loginError.textContent = '';
     try{
-      const res = await fetch('/api/admin/login', {
+      const res = await fetch('/api/admin/auth?action=login', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -623,7 +623,7 @@
   }));
 
   document.getElementById('logoutBtn').addEventListener('click', async function(){
-    try{ await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' }); }catch(e){}
+    try{ await fetch('/api/admin/auth?action=logout', { method: 'POST', credentials: 'include' }); }catch(e){}
     dashPanel.style.display = 'none';
     loginPanel.style.display = 'block';
   });
@@ -905,9 +905,11 @@
 
   async function deleteApplication(id){
     try{
-      await fetch('/api/admin/delete?id=' + encodeURIComponent(id), {
+      await fetch('/api/admin/decide?id=' + encodeURIComponent(id), {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'deleted' })
       });
     }catch(e){}
     loadApplications();
@@ -1101,7 +1103,7 @@
 
   async function loadSecurityLog(){
     try{
-      const res = await fetch('/api/admin/iplog', { credentials: 'include' });
+      const res = await fetch('/api/admin/applications?view=iplog', { credentials: 'include' });
       if(!res.ok) return;
       const data = await res.json();
       renderSecurityLog(data.entries || []);
