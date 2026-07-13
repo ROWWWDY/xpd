@@ -1,3 +1,7 @@
+// Also handles deletion (folded in from what used to be a separate
+// delete.js) to keep the total function count under Vercel's Hobby plan
+// limit — see api/admin/auth.js for the same reasoning.
+
 const { hasCapability, getSession } = require('../_lib/auth');
 const { readDb, writeDb } = require('../_lib/db');
 
@@ -9,16 +13,29 @@ function parseBody(req) {
   return req.body;
 }
 
+function reopenInvite(db, application) {
+  if (!application.inviteId) return;
+  const invite = db.invites.find((i) => i.id === application.inviteId);
+  if (invite) {
+    invite.used = false;
+    invite.usedAt = null;
+    invite.applicationId = null;
+  }
+}
+
 module.exports = async (req, res) => {
-  if (!hasCapability(req, 'decide_applications')) return res.status(403).json({ error: 'You do not have permission to accept/reject applications.' });
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
   const id = req.query.id;
   const { action } = parseBody(req);
-
   if (!id) return res.status(400).json({ error: 'Missing application id.' });
-  if (!['accepted', 'rejected'].includes(action)) {
+  if (!['accepted', 'rejected', 'deleted'].includes(action)) {
     return res.status(400).json({ error: 'Invalid action.' });
+  }
+
+  const requiredCapability = action === 'deleted' ? 'delete_applications' : 'decide_applications';
+  if (!hasCapability(req, requiredCapability)) {
+    return res.status(403).json({ error: 'You do not have permission to do that.' });
   }
 
   try {
@@ -26,20 +43,20 @@ module.exports = async (req, res) => {
     const application = db.applications.find((a) => a.id === id);
     if (!application) return res.status(404).json({ error: 'Application not found.' });
 
+    if (action === 'deleted') {
+      db.applications = db.applications.filter((a) => a.id !== id);
+      reopenInvite(db, application);
+      await writeDb(db);
+      return res.status(200).json({ ok: true });
+    }
+
     const session = getSession(req);
 
     application.status = action;
     application.reviewedBy = (session && session.username) || 'unknown';
     application.reviewedAt = new Date().toLocaleString();
 
-    if (action === 'rejected' && application.inviteId) {
-      const invite = db.invites.find((i) => i.id === application.inviteId);
-      if (invite) {
-        invite.used = false;
-        invite.usedAt = null;
-        invite.applicationId = null;
-      }
-    }
+    if (action === 'rejected') reopenInvite(db, application);
 
     await writeDb(db);
 
