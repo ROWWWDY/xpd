@@ -8,7 +8,13 @@ module.exports = async (req, res) => {
   try {
     const db = await readDb();
     const sorted = [...db.applications].sort((a, b) => b.ts - a.ts);
-    res.status(200).json({ applications: sorted });
+
+    // IP addresses are tracked separately for security purposes only — see
+    // api/admin/iplog.js. They never travel through the normal applications
+    // list/review flow, regardless of role.
+    const visible = sorted.map(({ ip, ...rest }) => rest);
+
+    res.status(200).json({ applications: visible });
   } catch (err) {
     console.error('applications list error:', err);
     res.status(500).json({ error: 'Could not reach the database.' });
