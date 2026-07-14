@@ -8,6 +8,7 @@ function parseBody(req) {
 
 module.exports = async (req, res) => {
   try {
+    const crypto = require('crypto');
     const { readDb, writeDb } = require('./_lib/db');
     const { ACK_SECTIONS } = require('./_lib/ackSections');
     const { getClientIp } = require('./_lib/auth');
@@ -72,7 +73,9 @@ module.exports = async (req, res) => {
 
     // Permanent, append-only — kept separate from `applications` so it
     // survives even if this application is later deleted or rejected.
+    // Owner can still individually clear entries from the Security tab.
     db.ipLog.push({
+      id: crypto.randomBytes(8).toString('hex'),
       formNumber,
       applicationId: record.id,
       charname: record.charname,
