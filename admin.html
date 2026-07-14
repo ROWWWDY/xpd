@@ -22,12 +22,19 @@
     --accent:#5b9bd9;
     --accent-dim:#22384f;
     --gold:#c9a227;
+    --gold-bright:#e6c250;
+    --gold-dim:#3a300f;
     --pending:#e0ab4c;
     --pending-bg:#3d2f14;
     --accepted:#57b17e;
     --accepted-bg:#163826;
     --rejected:#d8705a;
     --rejected-bg:#3a2019;
+    --tier-trainee:#7c8899;
+    --tier-officer:#5b9bd9;
+    --tier-nco:#57b17e;
+    --tier-senior:#e0ab4c;
+    --tier-command:#e6c250;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -53,7 +60,17 @@
     content:"";position:absolute;inset:0;
     background:
       radial-gradient(700px 500px at 8% -6%, rgba(91,155,217,0.10), transparent 60%),
-      radial-gradient(650px 480px at 108% 12%, rgba(201,162,39,0.07), transparent 55%);
+      radial-gradient(650px 480px at 108% 12%, rgba(201,162,39,0.09), transparent 55%);
+  }
+  .hazard-strip{
+    height:4px;width:100%;
+    background:repeating-linear-gradient(-45deg, var(--gold) 0 10px, #0a0e15 10px 20px);
+    opacity:0.55;
+  }
+  .seal-watermark{
+    position:absolute;top:50%;right:-60px;transform:translateY(-50%);
+    width:340px;height:340px;opacity:0.05;pointer-events:none;z-index:0;
+    filter:grayscale(1) brightness(3);
   }
 
   /* ---------------- login ---------------- */
@@ -151,21 +168,35 @@
   .view.active{display:block;}
 
   /* overview */
-  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:30px;}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:30px;}
   .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:20px 22px;border-top:3px solid var(--border-strong);box-shadow:0 14px 30px -22px rgba(0,0,0,0.7);transition:border-color .15s ease;}
   .stat-card.total{border-top-color:var(--accent);}
   .stat-card.pending{border-top-color:var(--pending);}
   .stat-card.accepted{border-top-color:var(--accepted);}
   .stat-card.rejected{border-top-color:var(--rejected);}
+  .stat-card.roster{border-top-color:var(--gold);}
   .stat-card .num{font-family:'IBM Plex Mono',monospace;font-size:32px;font-weight:600;line-height:1;}
   .stat-card.total .num{color:var(--accent);}
   .stat-card.pending .num{color:var(--pending);}
   .stat-card.accepted .num{color:var(--accepted);}
   .stat-card.rejected .num{color:var(--rejected);}
+  .stat-card.roster .num{color:var(--gold-bright);}
   .stat-card .label{font-size:11.5px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-dim);margin-top:8px;}
+
+  .overview-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:20px;align-items:start;}
+  @media (max-width:900px){.overview-grid{grid-template-columns:1fr;}}
+  .tier-breakdown{padding:20px 22px;}
+  .tier-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .tier-row:last-child{margin-bottom:0;}
+  .tier-row .tier-dot{width:9px;height:9px;border-radius:50%;flex:none;}
+  .tier-row .tier-label{font-size:12.5px;color:var(--text-dim);flex:1;min-width:0;}
+  .tier-row .tier-bar-track{flex:2;height:6px;background:var(--surface-3);border-radius:4px;overflow:hidden;}
+  .tier-row .tier-bar-fill{height:100%;border-radius:4px;}
+  .tier-row .tier-count{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--text);width:22px;text-align:right;flex:none;}
 
   .panel{background:var(--surface);border:1px solid var(--border);border-radius:9px;box-shadow:0 16px 36px -26px rgba(0,0,0,0.75);}
   .panel-head{padding:17px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+  .panel-head h3::before{content:"";display:inline-block;width:8px;height:8px;background:var(--gold);margin-right:9px;border-radius:2px;vertical-align:middle;}
   .panel-head h3{margin:0;font-family:'Barlow Semi Condensed',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;font-size:14.5px;}
   .activity-list{padding:6px 0;}
   .activity-row{display:flex;align-items:center;gap:12px;padding:13px 22px;border-bottom:1px solid var(--border);}
@@ -214,6 +245,37 @@
   .icon-btn.accept:hover{background:var(--accepted);border-color:var(--accepted);color:#081019;}
   .icon-btn.reject:hover{background:var(--rejected);border-color:var(--rejected);color:#081019;}
   .empty-state{padding:76px 20px;text-align:center;color:var(--text-faint);font-size:13.5px;}
+
+  /* roster board */
+  .roster-toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:22px;}
+  .roster-tier-group{margin-bottom:26px;}
+  .roster-tier-group:last-child{margin-bottom:0;}
+  .roster-tier-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  .roster-tier-head .dot{width:9px;height:9px;border-radius:50%;flex:none;}
+  .roster-tier-head .name{font-family:'Barlow Semi Condensed',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;font-size:13px;}
+  .roster-tier-head .count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-faint);}
+  .roster-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+  .roster-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:9px;
+    padding:16px 18px;display:flex;gap:13px;align-items:flex-start;
+    border-left:3px solid var(--border-strong);box-shadow:0 12px 26px -22px rgba(0,0,0,0.7);
+    transition:border-color .15s ease, transform .1s ease;
+  }
+  .roster-card:hover{transform:translateY(-1px);}
+  .roster-card.discharged{opacity:0.55;}
+  .roster-badge{
+    width:40px;height:40px;flex:none;border-radius:9px;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:15px;
+    background:var(--surface-2);border:1px solid var(--border-strong);
+  }
+  .roster-card-body{min-width:0;flex:1;}
+  .roster-card-name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .roster-card-rank{font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:0.5px;margin-top:3px;}
+  .roster-card-discord{font-size:11.5px;color:var(--text-faint);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .roster-card-joined{font-size:10.5px;color:var(--text-faint);margin-top:5px;font-family:'IBM Plex Mono',monospace;}
+
+  #rosterManagePanel{margin-top:8px;padding-top:22px;border-top:1px dashed var(--border-strong);}
 
   /* sync view */
   .sync-card{padding:26px 28px;margin-bottom:22px;}
@@ -303,6 +365,7 @@
 <!-- ============ Login screen ============ -->
 <div class="login-wrap" id="loginPanel">
   <div class="login-card">
+    <div class="hazard-strip"></div>
     <div class="restricted-banner">⚠ AUTHORIZED PERSONNEL ONLY</div>
     <div class="login-head">
       <img src="/logo.png" alt="City of Xlantis Police Department seal">
@@ -379,6 +442,7 @@
         <button class="btn" id="refreshBtn">Refresh</button>
       </div>
     </div>
+    <div class="hazard-strip" style="margin:-14px 0 26px;border-radius:2px;"></div>
 
     <!-- Overview -->
     <section class="view active" id="view-overview">
@@ -387,11 +451,19 @@
         <div class="stat-card pending"><div class="num" id="statPending">–</div><div class="label">Pending review</div></div>
         <div class="stat-card accepted"><div class="num" id="statAccepted">–</div><div class="label">Accepted</div></div>
         <div class="stat-card rejected"><div class="num" id="statRejected">–</div><div class="label">Rejected</div></div>
+        <div class="stat-card roster" id="rosterStatCard" style="display:none;"><div class="num" id="statRoster">–</div><div class="label">On duty roster</div></div>
       </div>
 
-      <div class="panel">
-        <div class="panel-head"><h3>Recent activity</h3></div>
-        <div class="activity-list" id="activityList"></div>
+      <div class="overview-grid">
+        <div class="panel" style="position:relative;overflow:hidden;">
+          <img src="/logo.png" class="seal-watermark" alt="">
+          <div class="panel-head"><h3>Recent activity</h3></div>
+          <div class="activity-list" id="activityList"></div>
+        </div>
+        <div class="panel tier-breakdown" id="tierBreakdownPanel" style="display:none;">
+          <div class="panel-head" style="padding:0 0 16px;border:none;"><h3>Roster by rank tier</h3></div>
+          <div id="tierBreakdownList"></div>
+        </div>
       </div>
     </section>
 
@@ -451,57 +523,55 @@
 
     <!-- Roster -->
     <section class="view" id="view-roster">
-      <div class="panel sync-card" data-cap="manage_roster">
-        <div class="sync-row">
-          <div class="field">
-            <label for="officerCharname">Character name</label>
-            <input type="text" id="officerCharname" placeholder="e.g. John Doe">
-          </div>
-          <div class="field">
-            <label for="officerDiscordName">Discord name</label>
-            <input type="text" id="officerDiscordName" placeholder="e.g. johndoe">
-          </div>
-          <div class="field">
-            <label for="officerDiscordId">Discord ID</label>
-            <input type="text" id="officerDiscordId" placeholder="e.g. 123456789012345678">
-          </div>
-          <div class="field" style="max-width:220px;min-width:180px;">
-            <label for="officerRank">Rank</label>
-            <select id="officerRank"></select>
-          </div>
-          <button class="btn primary" id="officerSubmitBtn">Add officer</button>
-          <button class="btn" id="officerCancelBtn" style="display:none;">Cancel</button>
+      <div class="roster-toolbar">
+        <div class="field" style="flex:1;max-width:280px;min-width:200px;margin:0;">
+          <input type="text" id="rosterSearch" placeholder="Search by name or Discord...">
         </div>
-        <p class="sync-note" style="margin:0;">For existing PD management who don't need to go through the intake form — adds them straight to the roster at whatever rank you set.</p>
-        <div class="sync-status" id="officerFormStatus"><span>—</span></div>
+        <select id="rosterStatusFilter" style="max-width:190px;">
+          <option value="active">Active only</option>
+          <option value="all">All (incl. discharged)</option>
+          <option value="discharged">Discharged only</option>
+        </select>
+        <button class="btn" id="rosterManageToggleBtn" data-cap="manage_roster" style="margin-left:auto;">Manage roster</button>
       </div>
 
-      <div class="panel sync-card">
-        <div class="sync-row">
-          <div class="field">
-            <label for="rosterSearch">Search</label>
-            <input type="text" id="rosterSearch" placeholder="Cadet name or Discord name...">
-          </div>
-          <div class="field" style="max-width:200px;min-width:160px;">
-            <label for="rosterStatusFilter">Status</label>
-            <select id="rosterStatusFilter">
-              <option value="active">Active only</option>
-              <option value="all">All (incl. discharged)</option>
-              <option value="discharged">Discharged only</option>
-            </select>
-          </div>
-        </div>
-        <p class="sync-note" style="margin:0;">Created automatically the moment an application is Accepted, starting at the base rank. Promote/demote here as people move up — no code changes needed.</p>
-      </div>
+      <div id="rosterBoard"></div>
+      <div class="empty-state" id="rosterEmptyState" style="display:none;">No one on the roster yet — accepting an application adds them here automatically.</div>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Rank</th><th>Cadet</th><th>Discord</th><th>Joined</th><th>Status</th><th data-cap="manage_roster"></th></tr>
-          </thead>
-          <tbody id="rosterTableBody"></tbody>
-        </table>
-        <div class="empty-state" id="rosterEmptyState" style="display:none;">No one on the roster yet — accepting an application adds them here automatically.</div>
+      <div id="rosterManagePanel" style="display:none;">
+        <div class="panel sync-card" data-cap="manage_roster">
+          <div class="sync-row">
+            <div class="field">
+              <label for="officerCharname">Character name</label>
+              <input type="text" id="officerCharname" placeholder="e.g. John Doe">
+            </div>
+            <div class="field">
+              <label for="officerDiscordName">Discord name</label>
+              <input type="text" id="officerDiscordName" placeholder="e.g. johndoe">
+            </div>
+            <div class="field">
+              <label for="officerDiscordId">Discord ID</label>
+              <input type="text" id="officerDiscordId" placeholder="e.g. 123456789012345678">
+            </div>
+            <div class="field" style="max-width:220px;min-width:180px;">
+              <label for="officerRank">Rank</label>
+              <select id="officerRank"></select>
+            </div>
+            <button class="btn primary" id="officerSubmitBtn">Add officer</button>
+            <button class="btn" id="officerCancelBtn" style="display:none;">Cancel</button>
+          </div>
+          <p class="sync-note" style="margin:0;">For existing PD management who don't need to go through the intake form — adds them straight to the roster at whatever rank you set.</p>
+          <div class="sync-status" id="officerFormStatus"><span>—</span></div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Rank</th><th>Cadet</th><th>Discord</th><th>Joined</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody id="rosterTableBody"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -534,7 +604,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Username</th><th>Role</th><th>Created</th><th></th></tr>
+            <tr><th>Username</th><th>Role</th><th></th></tr>
           </thead>
           <tbody id="adminTableBody"></tbody>
         </table>
@@ -607,6 +677,10 @@
   const statPending = document.getElementById('statPending');
   const statAccepted = document.getElementById('statAccepted');
   const statRejected = document.getElementById('statRejected');
+  const rosterStatCard = document.getElementById('rosterStatCard');
+  const statRoster = document.getElementById('statRoster');
+  const tierBreakdownPanel = document.getElementById('tierBreakdownPanel');
+  const tierBreakdownList = document.getElementById('tierBreakdownList');
   const navAppCount = document.getElementById('navAppCount');
   const activityList = document.getElementById('activityList');
   const viewTitle = document.getElementById('viewTitle');
@@ -1124,7 +1198,6 @@
           '<select data-role-select="' + a.id + '" style="width:auto;display:inline-block;padding:6px 8px;font-size:12.5px;">' + roleOptions + '</select> ' +
           '<button class="icon-btn" data-save-role="' + a.id + '" title="Save role change">✓</button>' +
         '</td>' +
-        '<td>' + new Date(a.createdAt).toLocaleDateString() + '</td>' +
         '<td><button class="icon-btn reject" data-remove-admin="' + a.id + '" title="Remove">✕</button></td>' +
       '</tr>';
     }).join('');
@@ -1244,11 +1317,17 @@
       btn.addEventListener('click', async function(){
         if(!confirm('Delete this log entry permanently? This cannot be undone.')) return;
         try{
-          await fetch('/api/admin/applications?view=iplog&id=' + encodeURIComponent(btn.getAttribute('data-remove-log')), {
+          const res = await fetch('/api/admin/applications?view=iplog&id=' + encodeURIComponent(btn.getAttribute('data-remove-log')), {
             method: 'DELETE',
             credentials: 'include'
           });
-        }catch(e){}
+          if(!res.ok){
+            const data = await res.json().catch(() => ({}));
+            alert(data.error || 'Could not delete that entry.');
+          }
+        }catch(e){
+          alert('Could not reach the server.');
+        }
         loadSecurityLog();
       });
     });
@@ -1258,11 +1337,17 @@
     if(!confirm('Delete ALL security log entries permanently? This cannot be undone.')) return;
     if(!confirm('Are you really sure? Every IP record for every past submission will be gone.')) return;
     try{
-      await fetch('/api/admin/applications?view=iplog&clearAll=true', {
+      const res = await fetch('/api/admin/applications?view=iplog&clearAll=true', {
         method: 'DELETE',
         credentials: 'include'
       });
-    }catch(e){}
+      if(!res.ok){
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Could not clear the log.');
+      }
+    }catch(e){
+      alert('Could not reach the server.');
+    }
     loadSecurityLog();
   });
 
@@ -1271,6 +1356,9 @@
   const rosterEmptyState = document.getElementById('rosterEmptyState');
   const rosterSearch = document.getElementById('rosterSearch');
   const rosterStatusFilter = document.getElementById('rosterStatusFilter');
+  const rosterBoard = document.getElementById('rosterBoard');
+  const rosterManageToggleBtn = document.getElementById('rosterManageToggleBtn');
+  const rosterManagePanel = document.getElementById('rosterManagePanel');
   const officerCharname = document.getElementById('officerCharname');
   const officerDiscordName = document.getElementById('officerDiscordName');
   const officerDiscordId = document.getElementById('officerDiscordId');
@@ -1281,6 +1369,7 @@
   let currentRoster = [];
   let currentRanks = [];
   let editingOfficerId = null;
+  let rosterManageMode = false;
 
   async function loadRoster(){
     try{
@@ -1294,11 +1383,58 @@
         officerRank.innerHTML = currentRanks.map(r => '<option value="' + escapeHtml(r) + '">' + escapeHtml(r) + '</option>').join('');
         if(currentRanks.includes(selected)) officerRank.value = selected;
       }
-      renderRoster();
+      renderRosterBoard();
+      if(rosterManageMode) renderRoster();
+      updateRosterOverview();
     }catch(e){}
   }
 
-  function renderRoster(){
+  const TIERS = [
+    { key: 'trainee', label: 'Trainee', max: 0, color: 'var(--tier-trainee)' },
+    { key: 'officer', label: 'Officer tier', max: 0.25, color: 'var(--tier-officer)' },
+    { key: 'nco', label: 'Corporal / Sergeant tier', max: 0.5, color: 'var(--tier-nco)' },
+    { key: 'senior', label: 'Lieutenant / Captain tier', max: 0.75, color: 'var(--tier-senior)' },
+    { key: 'command', label: 'Command staff', max: 1, color: 'var(--tier-command)' }
+  ];
+
+  function getRankTier(rank){
+    if(!currentRanks.length) return TIERS[0];
+    const idx = currentRanks.indexOf(rank);
+    if(idx <= 0) return TIERS[0];
+    const fraction = idx / (currentRanks.length - 1);
+    return TIERS.find(t => fraction <= t.max) || TIERS[TIERS.length - 1];
+  }
+
+  function updateRosterOverview(){
+    if(!currentCapabilities.includes('view_roster')) return;
+    const active = currentRoster.filter(r => r.status !== 'discharged');
+
+    rosterStatCard.style.display = '';
+    statRoster.textContent = active.length;
+
+    tierBreakdownPanel.style.display = '';
+    const counts = {};
+    TIERS.forEach(t => counts[t.key] = 0);
+    active.forEach(r => { counts[getRankTier(r.rank).key]++; });
+    const max = Math.max(1, ...Object.values(counts));
+
+    tierBreakdownList.innerHTML = TIERS.map(t => {
+      const count = counts[t.key];
+      const pct = Math.round((count / max) * 100);
+      return '<div class="tier-row">' +
+        '<span class="tier-dot" style="background:' + t.color + ';"></span>' +
+        '<span class="tier-label">' + t.label + '</span>' +
+        '<span class="tier-bar-track"><span class="tier-bar-fill" style="width:' + pct + '%;background:' + t.color + ';"></span></span>' +
+        '<span class="tier-count">' + count + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  function initials(name){
+    return (name || '?').trim().split(/\s+/).slice(0,2).map(w => w[0]).join('').toUpperCase();
+  }
+
+  function filteredRosterEntries(){
     let entries = [...currentRoster];
     const statusMode = rosterStatusFilter.value;
     if(statusMode === 'active') entries = entries.filter(r => r.status !== 'discharged');
@@ -1311,13 +1447,61 @@
         (r.discordName||'').toLowerCase().includes(term)
       );
     }
+    return entries;
+  }
+
+  function renderRosterBoard(){
+    const entries = filteredRosterEntries();
 
     if(entries.length === 0){
-      rosterTableBody.innerHTML = '';
+      rosterBoard.innerHTML = '';
       rosterEmptyState.style.display = 'block';
       return;
     }
     rosterEmptyState.style.display = 'none';
+
+    const groups = {};
+    TIERS.forEach(t => groups[t.key] = []);
+    entries.forEach(r => groups[getRankTier(r.rank).key].push(r));
+
+    rosterBoard.innerHTML = [...TIERS].reverse().map(tier => {
+      const people = groups[tier.key];
+      if(people.length === 0) return '';
+      const cards = people.map(r => {
+        const discharged = r.status === 'discharged';
+        return '<div class="roster-card' + (discharged ? ' discharged' : '') + '" style="border-left-color:' + tier.color + ';">' +
+          '<div class="roster-badge" style="color:' + tier.color + ';">' + escapeHtml(initials(r.charname)) + '</div>' +
+          '<div class="roster-card-body">' +
+            '<div class="roster-card-name">' + escapeHtml(r.charname || '—') + (discharged ? ' <span style="color:var(--text-faint);font-weight:400;">(discharged)</span>' : '') + '</div>' +
+            '<div class="roster-card-rank" style="color:' + tier.color + ';">' + escapeHtml(r.rank) + '</div>' +
+            '<div class="roster-card-discord">' + escapeHtml(r.discordName || '—') + '</div>' +
+            '<div class="roster-card-joined">Joined ' + escapeHtml(r.joinDate || '—') + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+      return '<div class="roster-tier-group">' +
+        '<div class="roster-tier-head"><span class="dot" style="background:' + tier.color + ';"></span><span class="name">' + tier.label + '</span><span class="count">' + people.length + '</span></div>' +
+        '<div class="roster-card-grid">' + cards + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  rosterManageToggleBtn.addEventListener('click', function(){
+    rosterManageMode = !rosterManageMode;
+    rosterBoard.style.display = rosterManageMode ? 'none' : '';
+    rosterManagePanel.style.display = rosterManageMode ? '' : 'none';
+    rosterManageToggleBtn.textContent = rosterManageMode ? 'Back to roster board' : 'Manage roster';
+    rosterManageToggleBtn.classList.toggle('primary', rosterManageMode);
+    if(rosterManageMode) renderRoster();
+  });
+
+  function renderRoster(){
+    const entries = filteredRosterEntries();
+
+    if(entries.length === 0){
+      rosterTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-faint);padding:30px;">No matching roster entries.</td></tr>';
+      return;
+    }
 
     const canManage = currentCapabilities.includes('manage_roster');
 
@@ -1468,8 +1652,12 @@
     }
   });
 
-  rosterSearch.addEventListener('input', renderRoster);
-  rosterStatusFilter.addEventListener('change', renderRoster);
+  function refreshRosterViews(){
+    renderRosterBoard();
+    if(rosterManageMode) renderRoster();
+  }
+  rosterSearch.addEventListener('input', refreshRosterViews);
+  rosterStatusFilter.addEventListener('change', refreshRosterViews);
 
   checkSession();
 
