@@ -15,7 +15,12 @@ module.exports = async (req, res) => {
       if (!hasCapability(req, 'view_security_log')) return res.status(403).json({ error: 'You do not have permission to view the security log.' });
       try {
         const db = await readDb();
-        const entries = [...db.ipLog].sort((a, b) => b.ts - a.ts);
+        // Entries logged before the `id` field existed won't have one —
+        // fall back to their timestamp (already unique) so they're still
+        // individually deletable rather than permanently stuck.
+        const entries = [...db.ipLog]
+          .map((e) => ({ ...e, id: e.id || String(e.ts) }))
+          .sort((a, b) => b.ts - a.ts);
         return res.status(200).json({ entries });
       } catch (err) {
         console.error('iplog error:', err);
@@ -32,7 +37,7 @@ module.exports = async (req, res) => {
         } else {
           const id = req.query.id;
           if (!id) return res.status(400).json({ error: 'Missing log entry id.' });
-          db.ipLog = db.ipLog.filter((e) => e.id !== id);
+          db.ipLog = db.ipLog.filter((e) => (e.id || String(e.ts)) !== id);
         }
         await writeDb(db);
         return res.status(200).json({ ok: true });
