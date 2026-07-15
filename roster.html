@@ -250,7 +250,9 @@
         '<div class="detail-body">' +
           '<span class="detail-rank-pill" style="background:' + tier.color + '22;color:' + tier.color + ';">' + escapeHtml(r.rank) + '</span>' +
           '<h2 class="detail-name">' + escapeHtml(r.charname || '—') + '</h2>' +
-          '<div class="detail-meta">' + escapeHtml(r.discordName || '') + (r.joinDate ? ' · Joined ' + escapeHtml(r.joinDate) : '') + '</div>' +
+      <!--
+      '<div class="detail-meta">' + escapeHtml(r.discordName || '') + (r.joinDate ? ' · Joined ' + escapeHtml(r.joinDate) : '') + '</div>' +
+      -->
           '<div class="detail-desc' + (r.description ? '' : ' empty') + '">' +
             (r.description ? escapeHtml(r.description) : 'No additional details on file for this officer.') +
           '</div>' +
