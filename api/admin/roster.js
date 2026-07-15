@@ -1,6 +1,6 @@
 // GET    /api/admin/roster                          -> list all roster entries
-// POST   /api/admin/roster?action=add                body { discordName, discordId, charname, rank? }
-// POST   /api/admin/roster?action=edit                body { id, discordName?, charname?, discordId?, rank? }
+// POST   /api/admin/roster?action=add                body { discordName, discordId, charname, rank?, imageUrl?, description? }
+// POST   /api/admin/roster?action=edit                body { id, discordName?, charname?, discordId?, rank?, imageUrl?, description? }
 // POST   /api/admin/roster?action=promote             body { id }        -> one step up RANKS
 // POST   /api/admin/roster?action=demote              body { id }        -> one step down RANKS
 // POST   /api/admin/roster?action=setRank             body { id, rank }  -> jump straight to a rank
@@ -23,6 +23,15 @@ function parseBody(req) {
     try { return JSON.parse(req.body); } catch (e) { return {}; }
   }
   return req.body;
+}
+
+// Only allow http(s) image URLs — anything else (javascript:, data:, etc.)
+// gets silently dropped rather than stored.
+function cleanImageUrl(value) {
+  const url = String(value || '').trim().slice(0, 500);
+  if (!url) return '';
+  if (!/^https?:\/\//i.test(url)) return '';
+  return url;
 }
 
 module.exports = async (req, res) => {
@@ -91,6 +100,8 @@ module.exports = async (req, res) => {
         rank,
         status: 'active',
         joinDate: now,
+        imageUrl: cleanImageUrl(body.imageUrl),
+        description: String(body.description || '').trim().slice(0, 500),
         promotionHistory: [{ rank, date: now, by: actor, note: 'Added directly by management (no application on file)' }]
       };
       db.roster.push(entry);
@@ -107,6 +118,8 @@ module.exports = async (req, res) => {
     if (action === 'edit') {
       if (body.charname !== undefined) entry.charname = String(body.charname).trim().slice(0, 100);
       if (body.discordName !== undefined) entry.discordName = String(body.discordName).trim().slice(0, 100);
+      if (body.imageUrl !== undefined) entry.imageUrl = cleanImageUrl(body.imageUrl);
+      if (body.description !== undefined) entry.description = String(body.description).trim().slice(0, 500);
       if (body.discordId !== undefined) {
         const newId = String(body.discordId).trim().slice(0, 100);
         if (newId !== entry.discordId && db.roster.find((r) => r.id !== id && r.discordId === newId)) {
