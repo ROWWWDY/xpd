@@ -41,6 +41,8 @@ function ensureRosterEntry(db, application, acceptedBy) {
     rank: RANKS[0],
     status: 'active',
     joinDate: new Date().toLocaleString(),
+    imageUrl: '',
+    description: '',
     promotionHistory: [{ rank: RANKS[0], date: new Date().toLocaleString(), by: acceptedBy, note: 'Accepted into the department' }]
   };
   db.roster.push(entry);
