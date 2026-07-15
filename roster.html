@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xlantis PD — Personnel Roster</title>
+<meta name="description" content="Current personnel of the Xlantis Police Department.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e15;
+    --surface:#121a26;
+    --surface-2:#17202e;
+    --border:#232e3d;
+    --border-strong:#33455c;
+    --text:#eef1f5;
+    --text-dim:#8fa0b5;
+    --text-faint:#546177;
+    --gold:#c9a227;
+    --gold-bright:#e6c250;
+    --tier-trainee:#7c8899;
+    --tier-officer:#5b9bd9;
+    --tier-nco:#57b17e;
+    --tier-senior:#e0ab4c;
+    --tier-command:#e6c250;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;
+    min-height:100vh;position:relative;
+  }
+  .bg-decor{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+  .bg-decor::before{
+    content:"";position:absolute;inset:-2px;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
+    background-size:42px 42px;
+    mask-image:radial-gradient(ellipse 90% 70% at 50% 0%, black 40%, transparent 85%);
+  }
+  .bg-decor::after{
+    content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(700px 500px at 8% -6%, rgba(91,155,217,0.10), transparent 60%),
+      radial-gradient(650px 480px at 108% 12%, rgba(201,162,39,0.09), transparent 55%);
+  }
+  .hazard-strip{
+    height:4px;width:100%;
+    background:repeating-linear-gradient(-45deg, var(--gold) 0 10px, #0a0e15 10px 20px);
+    opacity:0.55;
+  }
+  .wrap{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:0 24px 80px;}
+  header{text-align:center;padding:44px 20px 34px;}
+  header img{width:72px;height:72px;object-fit:contain;margin-bottom:16px;}
+  header h1{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;font-size:28px;margin:0 0 6px;}
+  header p{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-faint);letter-spacing:1.4px;text-transform:uppercase;margin:0;}
+  #statusLine{text-align:center;color:var(--text-faint);font-size:13px;padding:40px 0;}
+
+  .tier-group{margin-bottom:32px;}
+  .tier-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:9px;border-bottom:1px solid var(--border);}
+  .tier-head .dot{width:9px;height:9px;border-radius:50%;flex:none;}
+  .tier-head .name{font-family:'Barlow Semi Condensed',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;font-size:14px;}
+  .tier-head .count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-faint);}
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
+
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;
+    box-shadow:0 14px 30px -22px rgba(0,0,0,0.7);
+    cursor:pointer;text-align:left;color:inherit;font:inherit;padding:0;width:100%;
+    opacity:0;transform:translateY(18px);
+    transition:opacity .5s ease, transform .5s ease, border-color .12s ease, box-shadow .12s ease;
+  }
+  .card.in-view{opacity:1;transform:translateY(0);}
+  .card:hover{border-color:var(--border-strong);box-shadow:0 18px 36px -20px rgba(0,0,0,0.85);}
+  .card-photo{width:100%;aspect-ratio:1/1;background:var(--surface-2);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .card-photo img{width:100%;height:100%;object-fit:cover;}
+  .card-photo .fallback{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:34px;}
+  .card-body{padding:14px 16px 16px;}
+  .card-name{font-weight:600;font-size:14.5px;}
+  .card-rank{font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;}
+  .card-desc{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.5;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+
+  /* detail view */
+  #detailView{display:none;}
+  .back-link{
+    display:inline-flex;align-items:center;gap:7px;color:var(--text-dim);text-decoration:none;
+    font-size:12.5px;font-family:'IBM Plex Mono',monospace;letter-spacing:0.4px;
+    background:none;border:none;cursor:pointer;padding:0;margin-bottom:24px;
+  }
+  .back-link:hover{color:var(--text);}
+  .detail-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;
+    box-shadow:0 30px 60px -30px rgba(0,0,0,0.8);display:grid;grid-template-columns:280px 1fr;
+  }
+  @media (max-width:640px){.detail-card{grid-template-columns:1fr;}}
+  .detail-photo{background:var(--surface-2);display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:280px;}
+  .detail-photo img{width:100%;height:100%;object-fit:cover;}
+  .detail-photo .fallback{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:64px;}
+  .detail-body{padding:32px 34px;}
+  .detail-rank-pill{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;
+    letter-spacing:0.6px;padding:5px 12px;border-radius:20px;margin-bottom:14px;
+  }
+  .detail-name{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:30px;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 4px;}
+  .detail-meta{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-faint);margin-bottom:22px;}
+  .detail-desc{font-size:14.5px;line-height:1.7;color:var(--text-dim);border-top:1px solid var(--border);padding-top:20px;}
+  .detail-desc.empty{font-style:italic;color:var(--text-faint);}
+
+  footer{text-align:center;color:var(--text-faint);font-size:11px;font-family:'IBM Plex Mono',monospace;letter-spacing:0.6px;padding:30px 0 10px;}
+  @media (max-width:520px){
+    .card-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-decor"></div>
+<div class="hazard-strip"></div>
+
+<div class="wrap">
+  <header>
+    <img src="/logo.png" alt="City of Xlantis Police Department seal">
+    <h1>Xlantis Police Department</h1>
+    <p>Public Personnel Roster</p>
+  </header>
+
+  <div id="statusLine">Loading roster…</div>
+
+  <div id="listView">
+    <div id="rosterContent"></div>
+  </div>
+
+  <div id="detailView">
+    <button class="back-link" id="backBtn">← Back to roster</button>
+    <div id="detailContent"></div>
+  </div>
+
+  <footer>XPD RECORDS MANAGEMENT SYSTEM — READ ONLY</footer>
+</div>
+
+<script>
+(function(){
+  const statusLine = document.getElementById('statusLine');
+  const listView = document.getElementById('listView');
+  const rosterContent = document.getElementById('rosterContent');
+  const detailView = document.getElementById('detailView');
+  const detailContent = document.getElementById('detailContent');
+  const backBtn = document.getElementById('backBtn');
+
+  let roster = [];
+  let ranks = [];
+
+  const TIERS = [
+    { key: 'trainee', label: 'Trainee', max: 0, color: 'var(--tier-trainee)' },
+    { key: 'officer', label: 'Officer tier', max: 0.25, color: 'var(--tier-officer)' },
+    { key: 'nco', label: 'Corporal / Sergeant tier', max: 0.5, color: 'var(--tier-nco)' },
+    { key: 'senior', label: 'Lieutenant / Captain tier', max: 0.75, color: 'var(--tier-senior)' },
+    { key: 'command', label: 'Command staff', max: 1, color: 'var(--tier-command)' }
+  ];
+
+  function getTier(rank){
+    if(!ranks.length) return TIERS[0];
+    const idx = ranks.indexOf(rank);
+    if(idx <= 0) return TIERS[0];
+    const fraction = idx / (ranks.length - 1);
+    return TIERS.find(t => fraction <= t.max) || TIERS[TIERS.length - 1];
+  }
+
+  function initials(name){
+    return (name || '?').trim().split(/\s+/).slice(0,2).map(w => w[0]).join('').toUpperCase();
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+  }
+
+  function photoHtml(r, tierColor, size){
+    if(r.imageUrl){
+      return '<img src="' + escapeHtml(r.imageUrl) + '" alt="" loading="lazy" ' +
+        'onerror="this.parentElement.innerHTML=\'<span class=&quot;fallback&quot; style=&quot;color:' + tierColor + ';font-size:' + size + 'px;&quot;>' + escapeHtml(initials(r.charname)) + '</span>\';">';
+    }
+    return '<span class="fallback" style="color:' + tierColor + ';font-size:' + size + 'px;">' + escapeHtml(initials(r.charname)) + '</span>';
+  }
+
+  function renderList(){
+    if(roster.length === 0){
+      statusLine.textContent = 'No active personnel on record.';
+      return;
+    }
+    statusLine.style.display = 'none';
+
+    const groups = {};
+    TIERS.forEach(t => groups[t.key] = []);
+    roster.forEach(r => groups[getTier(r.rank).key].push(r));
+
+    rosterContent.innerHTML = [...TIERS].reverse().map(tier => {
+      const people = groups[tier.key];
+      if(people.length === 0) return '';
+      const cards = people.map(r =>
+        '<button class="card" data-id="' + escapeHtml(r.id) + '">' +
+          '<div class="card-photo">' + photoHtml(r, tier.color, 34) + '</div>' +
+          '<div class="card-body">' +
+            '<div class="card-name">' + escapeHtml(r.charname || '—') + '</div>' +
+            '<div class="card-rank" style="color:' + tier.color + ';">' + escapeHtml(r.rank) + '</div>' +
+            (r.description ? '<div class="card-desc">' + escapeHtml(r.description) + '</div>' : '') +
+          '</div>' +
+        '</button>'
+      ).join('');
+      return '<div class="tier-group">' +
+        '<div class="tier-head"><span class="dot" style="background:' + tier.color + ';"></span><span class="name">' + tier.label + '</span><span class="count">' + people.length + '</span></div>' +
+        '<div class="card-grid">' + cards + '</div>' +
+      '</div>';
+    }).join('');
+
+    rosterContent.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', () => openDetail(card.getAttribute('data-id'), true));
+    });
+
+    observeCards();
+  }
+
+  function observeCards(){
+    const cards = rosterContent.querySelectorAll('.card');
+    if(!('IntersectionObserver' in window)){
+      cards.forEach(c => c.classList.add('in-view'));
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if(entry.isIntersecting){
+          entry.target.classList.add('in-view');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    cards.forEach(c => io.observe(c));
+  }
+
+  function openDetail(id, pushState){
+    const r = roster.find(x => x.id === id);
+    if(!r) return;
+    const tier = getTier(r.rank);
+
+    detailContent.innerHTML =
+      '<div class="detail-card">' +
+        '<div class="detail-photo">' + photoHtml(r, tier.color, 64) + '</div>' +
+        '<div class="detail-body">' +
+          '<span class="detail-rank-pill" style="background:' + tier.color + '22;color:' + tier.color + ';">' + escapeHtml(r.rank) + '</span>' +
+          '<h2 class="detail-name">' + escapeHtml(r.charname || '—') + '</h2>' +
+          '<div class="detail-meta">' + escapeHtml(r.discordName || '') + (r.joinDate ? ' · Joined ' + escapeHtml(r.joinDate) : '') + '</div>' +
+          '<div class="detail-desc' + (r.description ? '' : ' empty') + '">' +
+            (r.description ? escapeHtml(r.description) : 'No additional details on file for this officer.') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    listView.style.display = 'none';
+    detailView.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if(pushState){
+      history.pushState({ officer: id }, '', '?officer=' + encodeURIComponent(id));
+    }
+  }
+
+  function closeDetail(pushState){
+    detailView.style.display = 'none';
+    listView.style.display = '';
+    if(pushState){
+      history.pushState({}, '', window.location.pathname);
+    }
+  }
+
+  backBtn.addEventListener('click', () => closeDetail(true));
+  window.addEventListener('popstate', function(){
+    const id = new URLSearchParams(window.location.search).get('officer');
+    if(id) openDetail(id, false); else closeDetail(false);
+  });
+
+  async function load(){
+    try{
+      const res = await fetch('/api/public-roster');
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error || 'Could not load the roster.');
+
+      roster = data.roster || [];
+      ranks = data.ranks || [];
+      renderList();
+
+      const requestedId = new URLSearchParams(window.location.search).get('officer');
+      if(requestedId) openDetail(requestedId, false);
+    }catch(err){
+      statusLine.textContent = 'Could not load the roster right now. Please try again shortly.';
+    }
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>
