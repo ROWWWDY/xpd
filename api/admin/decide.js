@@ -2,6 +2,7 @@
 // delete.js) to keep the total function count under Vercel's Hobby plan
 // limit — see api/admin/auth.js for the same reasoning.
 
+const crypto = require('crypto');
 const { hasCapability, getSession } = require('../_lib/auth');
 const { readDb, writeDb } = require('../_lib/db');
 const { RANKS } = require('../_lib/ranks');
@@ -43,6 +44,7 @@ function ensureRosterEntry(db, application, acceptedBy) {
     joinDate: new Date().toLocaleString(),
     imageUrl: '',
     description: '',
+    selfToken: crypto.randomBytes(12).toString('hex'),
     promotionHistory: [{ rank: RANKS[0], date: new Date().toLocaleString(), by: acceptedBy, note: 'Accepted into the department' }]
   };
   db.roster.push(entry);

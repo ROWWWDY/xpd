@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Update Your Profile — Xlantis Police Department</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/public.css">
+<style>
+  .profile-wrap{max-width:560px;margin:0 auto;}
+  .profile-card{background:#fff;border:1px solid #e2e0d6;border-radius:10px;padding:32px;}
+  .profile-card .rank-line{font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:1px;text-transform:uppercase;color:var(--blue-accent);margin-bottom:4px;}
+  .profile-card h2{font-family:'Oswald',sans-serif;font-weight:600;font-size:22px;margin:0 0 24px;color:var(--text-dark);}
+  .photo-row{display:flex;align-items:center;gap:20px;margin-bottom:26px;}
+  .photo-preview{width:96px;height:96px;border-radius:10px;overflow:hidden;background:linear-gradient(160deg,#dfe3ec,#c9cfdd);
+    display:flex;align-items:center;justify-content:center;flex:none;}
+  .photo-preview img{width:100%;height:100%;object-fit:cover;}
+  .photo-preview .initials{font-family:'Oswald',sans-serif;font-weight:600;font-size:26px;color:#8a93a8;}
+  .photo-controls label.file-btn{
+    display:inline-block;font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;color:var(--text-dark);
+    background:#fff;border:1px solid #d8d5c8;border-radius:5px;padding:9px 16px;cursor:pointer;margin-bottom:6px;
+  }
+  .photo-controls label.file-btn:hover{border-color:var(--blue-accent);color:var(--blue-accent);}
+  .photo-controls input[type=file]{display:none;}
+  .photo-hint{font-size:12px;color:var(--text-gray-2);}
+  .field-label{display:block;font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;color:var(--text-dark);margin-bottom:8px;}
+  textarea#bioInput{
+    width:100%;font-family:'Inter',sans-serif;font-size:14px;color:var(--text-dark);
+    background:#fff;border:1px solid #e2e0d6;border-radius:6px;padding:12px 14px;outline:none;min-height:120px;resize:vertical;
+  }
+  textarea#bioInput:focus{border-color:var(--blue-accent);}
+  .char-count{font-size:11.5px;color:var(--text-gray-2);text-align:right;margin-top:6px;}
+  .status-msg{font-size:13.5px;margin-top:16px;min-height:18px;}
+  .status-msg.error{color:#b8433d;}
+  .status-msg.ok{color:#1e7f4f;}
+  .invalid-state{text-align:center;padding:50px 20px;color:var(--text-gray);}
+</style>
+</head>
+<body>
+
+<header class="site-nav">
+  <div class="nav-row">
+    <a class="brand" href="/">
+      <img src="/logo.png" alt="XPD badge">
+      <div class="brand-text">
+        <div class="city">City of Xlantis</div>
+        <div class="name">Police Department</div>
+      </div>
+    </a>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-light-dim);">Officer Self-Service</span>
+  </div>
+</header>
+
+<section class="page-header">
+  <div class="buildings" data-count="16"></div>
+  <div class="container inner">
+    <div class="hero-eyebrow">Officer Self-Service</div>
+    <h1>Update your profile</h1>
+    <p>Upload your own photo and write your own bio for the public roster. Command staff can still edit either of these if something needs fixing.</p>
+  </div>
+</section>
+
+<section>
+  <div class="container profile-wrap" id="content">
+    <div class="invalid-state">Loading your profile…</div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <p>&copy; 2026 Xlantis Police Department. This is a roleplay community and not affiliated with any real law enforcement agency.</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/site.js"></script>
+<script>
+  var token = new URLSearchParams(window.location.search).get('token') || '';
+  var content = document.getElementById('content');
+  var pendingImageBase64 = null; // set only when the officer picks a new file this session
+  var MAX_BYTES = 2 * 1024 * 1024;
+
+  if (!token) {
+    content.innerHTML = '<div class="invalid-state">No profile link found. Ask your admin for your self-service link.</div>';
+  } else {
+    fetch('/api/public-roster?action=self&token=' + encodeURIComponent(token))
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          content.innerHTML = '<div class="invalid-state">' + escapeHtml(res.data.error || 'This link is invalid.') + '</div>';
+          return;
+        }
+        renderForm(res.data.entry);
+      })
+      .catch(function () {
+        content.innerHTML = '<div class="invalid-state">Couldn\'t reach the server. Try again in a moment.</div>';
+      });
+  }
+
+  function renderForm(entry) {
+    var initials = (entry.charname || '?').split(' ').map(function (p) { return p[0] || ''; }).slice(0, 2).join('').toUpperCase();
+    var photoInner = entry.imageUrl
+      ? '<img id="photoImg" src="' + escapeHtml(entry.imageUrl) + '" alt="">'
+      : '<span class="initials" id="photoInitials">' + escapeHtml(initials) + '</span>';
+
+    content.innerHTML =
+      '<div class="profile-card">' +
+        '<div class="rank-line">' + escapeHtml(entry.rank) + '</div>' +
+        '<h2>' + escapeHtml(entry.charname) + '</h2>' +
+        '<div class="photo-row">' +
+          '<div class="photo-preview" id="photoPreview">' + photoInner + '</div>' +
+          '<div class="photo-controls">' +
+            '<label class="file-btn" for="photoInput">Choose new photo</label>' +
+            '<input type="file" id="photoInput" accept="image/png,image/jpeg">' +
+            '<div class="photo-hint">PNG or JPEG, up to 2MB.</div>' +
+          '</div>' +
+        '</div>' +
+        '<label class="field-label" for="bioInput">Your bio</label>' +
+        '<textarea id="bioInput" maxlength="500" placeholder="Write a short bio — background, specialty, whatever you want other officers and the public to see.">' + escapeHtml(entry.description || '') + '</textarea>' +
+        '<div class="char-count" id="charCount">' + (entry.description || '').length + ' / 500</div>' +
+        '<div style="margin-top:22px;">' +
+          '<button class="btn btn-primary" id="saveBtn" type="button">Save changes</button>' +
+        '</div>' +
+        '<div class="status-msg" id="statusMsg"></div>' +
+      '</div>';
+
+    var photoInput = document.getElementById('photoInput');
+    var bioInput = document.getElementById('bioInput');
+    var charCount = document.getElementById('charCount');
+    var statusMsg = document.getElementById('statusMsg');
+    var saveBtn = document.getElementById('saveBtn');
+    var photoPreview = document.getElementById('photoPreview');
+
+    bioInput.addEventListener('input', function () {
+      charCount.textContent = bioInput.value.length + ' / 500';
+    });
+
+    photoInput.addEventListener('change', function () {
+      var file = photoInput.files && photoInput.files[0];
+      if (!file) return;
+      if (!['image/png', 'image/jpeg'].includes(file.type)) {
+        statusMsg.textContent = 'Please choose a PNG or JPEG image.';
+        statusMsg.className = 'status-msg error';
+        photoInput.value = '';
+        return;
+      }
+      if (file.size > MAX_BYTES) {
+        statusMsg.textContent = 'That image is over 2MB — please choose a smaller file.';
+        statusMsg.className = 'status-msg error';
+        photoInput.value = '';
+        return;
+      }
+      statusMsg.textContent = '';
+      var reader = new FileReader();
+      reader.onload = function () {
+        pendingImageBase64 = reader.result;
+        photoPreview.innerHTML = '<img src="' + reader.result + '" alt="">';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    saveBtn.addEventListener('click', function () {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+      statusMsg.textContent = '';
+      statusMsg.className = 'status-msg';
+
+      var payload = { token: token, description: bioInput.value };
+      if (pendingImageBase64) payload.imageBase64 = pendingImageBase64;
+
+      fetch('/api/public-roster?action=selfUpdate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+        .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+        .then(function (res) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save changes';
+          if (!res.ok) {
+            statusMsg.textContent = res.data.error || 'Could not save your changes.';
+            statusMsg.className = 'status-msg error';
+            return;
+          }
+          pendingImageBase64 = null;
+          statusMsg.textContent = 'Saved.';
+          statusMsg.className = 'status-msg ok';
+        })
+        .catch(function () {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save changes';
+          statusMsg.textContent = 'Couldn\'t reach the server. Try again in a moment.';
+          statusMsg.className = 'status-msg error';
+        });
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+</script>
+</body>
+</html>

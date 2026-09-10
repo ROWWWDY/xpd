@@ -539,7 +539,7 @@
           <option value="all">All (incl. discharged)</option>
           <option value="discharged">Discharged only</option>
         </select>
-        <a href="/roster" target="_blank" class="btn" style="margin-left:auto;text-decoration:none;">View public page ↗</a>
+        <a href="/officers" target="_blank" class="btn" style="margin-left:auto;text-decoration:none;">View public page ↗</a>
         <button class="btn" id="rosterManageToggleBtn" data-cap="manage_roster">Manage roster</button>
       </div>
 
@@ -578,14 +578,14 @@
               <textarea id="officerDescription" placeholder="A short bio or note about this officer..." style="min-height:44px;"></textarea>
             </div>
           </div>
-          <p class="sync-note" style="margin:0;">For existing PD management who don't need to go through the intake form — adds them straight to the roster at whatever rank you set. Photo and description are visible on the public roster page at <code>/roster</code>.</p>
+          <p class="sync-note" style="margin:0;">For existing PD management who don't need to go through the intake form — adds them straight to the roster at whatever rank you set. Photo and description are visible on the public roster page at <code>/officers</code>. Each officer also gets a private self-service link (under Link in the table) they can use to upload their own photo and write their own bio — you can still edit either yourself any time.</p>
           <div class="sync-status" id="officerFormStatus"><span>—</span></div>
         </div>
 
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Rank</th><th>Cadet</th><th>Discord</th><th>Joined</th><th>Status</th><th></th></tr>
+              <tr><th>Rank</th><th>Cadet</th><th>Discord</th><th>Joined</th><th>Status</th><th>Link</th><th></th></tr>
             </thead>
             <tbody id="rosterTableBody"></tbody>
           </table>
@@ -1092,7 +1092,7 @@
   const inviteEmptyState = document.getElementById('inviteEmptyState');
 
   function inviteLink(token){
-    return window.location.origin + '/?invite=' + token;
+    return window.location.origin + '/acknowledge?invite=' + token;
   }
 
   async function loadInvites(){
@@ -1519,7 +1519,7 @@
     const entries = filteredRosterEntries();
 
     if(entries.length === 0){
-      rosterTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-faint);padding:30px;">No matching roster entries.</td></tr>';
+      rosterTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-faint);padding:30px;">No matching roster entries.</td></tr>';
       return;
     }
 
@@ -1529,6 +1529,11 @@
       const statusPill = r.status === 'discharged'
         ? '<span class="pill rejected">discharged</span>'
         : '<span class="pill accepted">active</span>';
+      const linkCell = !canManage ? '<td>—</td>' :
+        '<td style="white-space:nowrap;">' +
+          '<button class="icon-btn" data-copylink="' + r.id + '" title="Copy self-service link">🔗</button> ' +
+          '<button class="icon-btn" data-regen="' + r.id + '" title="Regenerate link (revokes the old one)">↻</button>' +
+        '</td>';
       const actions = !canManage ? '' :
         '<td style="white-space:nowrap;">' +
           '<button class="icon-btn" data-promote="' + r.id + '" title="Promote">▲</button> ' +
@@ -1545,11 +1550,30 @@
         '<td>' + escapeHtml(r.discordName || '—') + ' <span style="color:var(--text-faint);">(' + escapeHtml(r.discordId || '—') + ')</span></td>' +
         '<td>' + escapeHtml(r.joinDate || '—') + '</td>' +
         '<td>' + statusPill + '</td>' +
+        linkCell +
         actions +
       '</tr>';
     }).join('');
 
     if(!canManage) return;
+
+    rosterTableBody.querySelectorAll('[data-copylink]').forEach(btn => {
+      btn.addEventListener('click', function(){
+        const entry = currentRoster.find(r => r.id === btn.getAttribute('data-copylink'));
+        if(!entry || !entry.selfToken){ alert('No link yet — try Regenerate first.'); return; }
+        const link = window.location.origin + '/my-profile?token=' + entry.selfToken;
+        navigator.clipboard.writeText(link).then(() => {
+          btn.textContent = '✓';
+          setTimeout(() => { btn.textContent = '🔗'; }, 1200);
+        }).catch(() => { prompt('Copy this link:', link); });
+      });
+    });
+    rosterTableBody.querySelectorAll('[data-regen]').forEach(btn => {
+      btn.addEventListener('click', function(){
+        if(!confirm('Generate a new self-service link for this officer? Their old link will stop working.')) return;
+        rosterAction(btn.getAttribute('data-regen'), 'regenToken');
+      });
+    });
 
     rosterTableBody.querySelectorAll('[data-promote]').forEach(btn => {
       btn.addEventListener('click', () => rosterAction(btn.getAttribute('data-promote'), 'promote'));

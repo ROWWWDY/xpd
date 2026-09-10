@@ -4,6 +4,7 @@
 // POST   /api/admin/roster?action=promote             body { id }        -> one step up RANKS
 // POST   /api/admin/roster?action=demote              body { id }        -> one step down RANKS
 // POST   /api/admin/roster?action=setRank             body { id, rank }  -> jump straight to a rank
+// POST   /api/admin/roster?action=regenToken          body { id }        -> new self-service link, old one stops working
 // POST   /api/admin/roster?action=discharge           body { id, note }  -> mark inactive
 // POST   /api/admin/roster?action=reactivate          body { id }        -> mark active again
 // DELETE /api/admin/roster?id=X                       -> permanently remove an entry
@@ -39,6 +40,12 @@ module.exports = async (req, res) => {
     if (!hasCapability(req, 'view_roster')) return res.status(403).json({ error: 'You do not have permission to view the roster.' });
     try {
       const db = await readDb();
+      // Backfill self-service tokens for entries created before this feature existed.
+      let needsSave = false;
+      db.roster.forEach((r) => {
+        if (!r.selfToken) { r.selfToken = crypto.randomBytes(12).toString('hex'); needsSave = true; }
+      });
+      if (needsSave) await writeDb(db);
       const sorted = [...db.roster].sort((a, b) => RANKS.indexOf(b.rank) - RANKS.indexOf(a.rank) || a.charname.localeCompare(b.charname));
       return res.status(200).json({ roster: sorted, ranks: RANKS });
     } catch (err) {
@@ -102,6 +109,7 @@ module.exports = async (req, res) => {
         joinDate: now,
         imageUrl: cleanImageUrl(body.imageUrl),
         description: String(body.description || '').trim().slice(0, 500),
+        selfToken: crypto.randomBytes(12).toString('hex'),
         promotionHistory: [{ rank, date: now, by: actor, note: 'Added directly by management (no application on file)' }]
       };
       db.roster.push(entry);
@@ -143,6 +151,8 @@ module.exports = async (req, res) => {
       if (!isValidRank(body.rank)) return res.status(400).json({ error: 'Invalid rank.' });
       entry.rank = body.rank;
       entry.promotionHistory.push({ rank: body.rank, date: now, by: actor, note: 'Rank set manually' });
+    } else if (action === 'regenToken') {
+      entry.selfToken = crypto.randomBytes(12).toString('hex');
     } else if (action === 'discharge') {
       entry.status = 'discharged';
       entry.promotionHistory.push({ rank: entry.rank, date: now, by: actor, note: 'Discharged' + (body.note ? ': ' + String(body.note).slice(0, 200) : '') });
