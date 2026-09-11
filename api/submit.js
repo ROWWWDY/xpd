@@ -78,7 +78,13 @@ module.exports = async (req, res) => {
       }
 
       const filename = 'cadets/' + cleanDiscordId + '-' + Date.now() + '.' + decoded.ext;
-      const blob = await put(filename, decoded.buffer, { access: 'public', contentType: decoded.mime });
+      let blob;
+      try {
+        blob = await put(filename, decoded.buffer, { access: 'public', contentType: decoded.mime });
+      } catch (blobErr) {
+        console.error('blob upload error:', blobErr);
+        return res.status(500).json({ error: 'Photo storage isn\'t set up yet on this deployment — ask an admin to connect Vercel Blob (Storage → Create Database → Blob), or submit without a photo for now.' });
+      }
       uploadedImageUrl = blob.url;
     }
 
@@ -131,6 +137,6 @@ module.exports = async (req, res) => {
     res.status(200).json({ ok: true, formNumber, id: record.id });
   } catch (err) {
     console.error('submit error:', err);
-    res.status(500).json({ error: 'Could not reach the database. Please try again.', detail: err.message || String(err) });
+    res.status(500).json({ error: 'Something went wrong submitting your application. Please try again in a moment, or contact an admin if it keeps happening.' });
   }
 };
